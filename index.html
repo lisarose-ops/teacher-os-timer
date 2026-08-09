@@ -182,6 +182,59 @@
   let timerInterval = null;
   let pipWindow = null;
 
+  let audioContext = null;
+
+function prepareAudio() {
+  if (!audioContext) {
+    audioContext =
+      new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+}
+
+function playTimerChime() {
+  prepareAudio();
+
+  const now = audioContext.currentTime;
+
+  const notes = [
+    { frequency: 659.25, start: 0 },
+    { frequency: 783.99, start: 0.28 }
+  ];
+
+  notes.forEach(function(note) {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.value = note.frequency;
+
+    gain.gain.setValueAtTime(
+      0.0001,
+      now + note.start
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.22,
+      now + note.start + 0.03
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + note.start + 0.55
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start(now + note.start);
+    oscillator.stop(now + note.start + 0.6);
+  });
+}
+
 
   /* -------------------------------------
      DISPLAY
@@ -271,12 +324,14 @@
 
         if (totalSeconds <= 0) {
 
-          totalSeconds = 0;
+  totalSeconds = 0;
 
-          updateDisplay();
+  updateDisplay();
 
-          pauseTimer();
-        }
+  pauseTimer();
+
+  playTimerChime();
+}
 
       }, 1000);
   }
