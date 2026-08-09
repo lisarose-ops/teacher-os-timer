@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Teacher OS Timer</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-family: Arial, sans-serif;
+      background: #f7f6f2;
+      color: #4a403a;
+    }
+
+    .timer-card {
+      width: min(520px, 92vw);
+      text-align: center;
+
+      padding: 32px;
+
+      background: #f7f6f2;
+      border: 2px solid #6f554d;
+      border-radius: 20px;
+    }
+
+    h1 {
+      margin: 0 0 15px;
+      font-size: 28px;
+    }
+
+    #timer {
+      font-size: 88px;
+      font-weight: bold;
+      line-height: 1;
+      margin: 25px 0 30px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      border: 1px solid #6f554d;
+      border-radius: 10px;
+
+      padding: 11px 18px;
+
+      font-size: 16px;
+      cursor: pointer;
+
+      background: white;
+      color: #4a403a;
+    }
+
+    button:hover {
+      background: #e8d6d0;
+    }
+
+    .float-button {
+      margin-top: 8px;
+      font-weight: bold;
+      background: #e8d6d0;
+    }
+
+    /* Floating PiP window */
+
+    body.pip-mode {
+      min-height: 100vh;
+      background: #f7f6f2;
+    }
+
+    body.pip-mode .timer-card {
+      width: 100%;
+      border: none;
+      padding: 14px;
+    }
+
+    body.pip-mode h1,
+    body.pip-mode .controls,
+    body.pip-mode .float-button {
+      display: none;
+    }
+
+    body.pip-mode #timer {
+      margin: 0;
+      font-size: 64px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="timer-card">
+
+    <h1>☕ Teacher OS Timer</h1>
+
+    <div id="timer">05:00</div>
+
+
+    <!-- MAIN CONTROLS -->
+
+    <div class="controls">
+
+      <button onclick="startTimer()">
+        Start
+      </button>
+
+      <button onclick="pauseTimer()">
+        Pause
+      </button>
+
+      <button onclick="resetTimer()">
+        Reset
+      </button>
+
+    </div>
+
+
+    <!-- PRESET TIMES -->
+
+    <div class="controls">
+
+      <button onclick="setTimer(5)">
+        5 min
+      </button>
+
+      <button onclick="setTimer(10)">
+        10 min
+      </button>
+
+      <button onclick="setTimer(15)">
+        15 min
+      </button>
+
+      <button onclick="setTimer(20)">
+        20 min
+      </button>
+
+    </div>
+
+
+    <!-- FLOAT -->
+
+    <button
+      class="float-button"
+      onclick="floatTimer()"
+    >
+      🪽 Float Timer
+    </button>
+
+  </div>
+
+
+<script>
+
+  /* =====================================
+     TEACHER OS TIMER
+  ===================================== */
+
+  let totalSeconds = 300;
+  let startingSeconds = 300;
+
+  let timerInterval = null;
+  let pipWindow = null;
+
+
+  /* -------------------------------------
+     DISPLAY
+  ------------------------------------- */
+
+  function getTimeText() {
+
+    const minutes =
+      Math.floor(totalSeconds / 60);
+
+    const seconds =
+      totalSeconds % 60;
+
+    return (
+      String(minutes).padStart(2, '0') +
+      ':' +
+      String(seconds).padStart(2, '0')
+    );
+  }
+
+
+  function updateDisplay() {
+
+    const timeText = getTimeText();
+
+    document.getElementById(
+      'timer'
+    ).textContent = timeText;
+
+
+    if (
+      pipWindow &&
+      !pipWindow.closed
+    ) {
+
+      const pipTimer =
+        pipWindow.document.getElementById(
+          'pipTimer'
+        );
+
+      if (pipTimer) {
+        pipTimer.textContent = timeText;
+      }
+    }
+  }
+
+
+  /* -------------------------------------
+     SET TIMER
+  ------------------------------------- */
+
+  function setTimer(minutes) {
+
+    pauseTimer();
+
+    totalSeconds =
+      minutes * 60;
+
+    startingSeconds =
+      totalSeconds;
+
+    updateDisplay();
+  }
+
+
+  /* -------------------------------------
+     START
+  ------------------------------------- */
+
+  function startTimer() {
+
+    if (
+      timerInterval ||
+      totalSeconds <= 0
+    ) {
+      return;
+    }
+
+
+    timerInterval =
+      setInterval(function() {
+
+        totalSeconds--;
+
+        updateDisplay();
+
+
+        if (totalSeconds <= 0) {
+
+          totalSeconds = 0;
+
+          updateDisplay();
+
+          pauseTimer();
+        }
+
+      }, 1000);
+  }
+
+
+  /* -------------------------------------
+     PAUSE
+  ------------------------------------- */
+
+  function pauseTimer() {
+
+    if (timerInterval) {
+
+      clearInterval(
+        timerInterval
+      );
+
+      timerInterval = null;
+    }
+  }
+
+
+  /* -------------------------------------
+     RESET
+  ------------------------------------- */
+
+  function resetTimer() {
+
+    pauseTimer();
+
+    totalSeconds =
+      startingSeconds;
+
+    updateDisplay();
+  }
+
+
+  /* -------------------------------------
+     FLOATING TIMER
+  ------------------------------------- */
+
+  async function floatTimer() {
+
+    if (
+      !('documentPictureInPicture' in window)
+    ) {
+
+      alert(
+        'Your browser does not support the floating timer.'
+      );
+
+      return;
+    }
+
+
+    try {
+
+      pipWindow =
+        await documentPictureInPicture.requestWindow({
+          width: 340,
+          height: 150
+        });
+
+
+      /* Copy page styles into PiP */
+
+      [...document.styleSheets].forEach(
+        styleSheet => {
+
+          try {
+
+            const cssRules =
+              [...styleSheet.cssRules]
+                .map(rule => rule.cssText)
+                .join('');
+
+
+            const style =
+              pipWindow.document.createElement(
+                'style'
+              );
+
+            style.textContent =
+              cssRules;
+
+            pipWindow.document.head.appendChild(
+              style
+            );
+
+          } catch (error) {
+
+            console.log(
+              'Could not copy stylesheet.',
+              error
+            );
+          }
+
+        }
+      );
+
+
+      /* Build floating timer */
+
+      pipWindow.document.body.className =
+        'pip-mode';
+
+
+      pipWindow.document.body.innerHTML = `
+        <div class="timer-card">
+
+          <div id="pipTimer">
+            ${getTimeText()}
+          </div>
+
+        </div>
+      `;
+
+
+      /* Clean up when closed */
+
+      pipWindow.addEventListener(
+        'pagehide',
+        function() {
+          pipWindow = null;
+        }
+      );
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        'The floating timer could not open.\n\n' +
+        error.message
+      );
+    }
+  }
+
+
+  /* -------------------------------------
+     INITIALIZE
+  ------------------------------------- */
+
+  updateDisplay();
+
+</script>
+
+</body>
+</html>
